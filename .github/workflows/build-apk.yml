@@ -27,6 +27,13 @@ jobs:
       - name: Retirer le test généré par défaut (ne correspond pas à cette app)
         run: rm -f mobile/test/widget_test.dart
 
+      # firebase-auth (23.2.1) exige minSdkVersion 23 ; le template flutter
+      # create par défaut génère minSdkVersion 21.
+      - name: Relever minSdkVersion à 23 (requis par firebase-auth)
+        run: |
+          sed -i 's/minSdkVersion flutter.minSdkVersion/minSdkVersion 23/' mobile/android/app/build.gradle
+          grep -q 'minSdkVersion 23' mobile/android/app/build.gradle || { echo "::error::minSdkVersion patch failed"; cat mobile/android/app/build.gradle; exit 1; }
+
       - name: Installer les dépendances
         working-directory: mobile
         run: flutter pub get
