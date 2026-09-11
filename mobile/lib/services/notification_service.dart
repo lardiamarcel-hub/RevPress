@@ -32,10 +32,14 @@ class NotificationService {
   }
 
   Future<void> setNotificationsEnabled(bool enabled) async {
-    if (enabled) {
-      await FirebaseMessaging.instance.subscribeToTopic(_digestTopic);
-    } else {
-      await FirebaseMessaging.instance.unsubscribeFromTopic(_digestTopic);
+    try {
+      if (enabled) {
+        await FirebaseMessaging.instance.subscribeToTopic(_digestTopic);
+      } else {
+        await FirebaseMessaging.instance.unsubscribeFromTopic(_digestTopic);
+      }
+    } catch (_) {
+      // Pas de backend connecté : préférence conservée localement, sans effet réseau.
     }
   }
 

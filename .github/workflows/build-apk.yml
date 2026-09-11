@@ -1,0 +1,53 @@
+name: Build APK
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.24.5'
+          channel: 'stable'
+
+      # Le SDK Flutter n'est pas disponible dans l'environnement qui a généré
+      # ce dépôt : les dossiers de plateforme (android/, ios/, ...) sont
+      # générés ici, à la volée, à chaque build.
+      - name: Générer les dossiers de plateforme
+        working-directory: mobile
+        run: flutter create --platforms=android --org bf.cci.revueecobf .
+
+      - name: Installer les dépendances
+        working-directory: mobile
+        run: flutter pub get
+
+      - name: Analyser le code
+        working-directory: mobile
+        run: flutter analyze --no-fatal-infos --no-fatal-warnings
+
+      - name: Construire l'APK (release)
+        working-directory: mobile
+        run: flutter build apk --release
+
+      - name: Renommer l'APK
+        run: cp mobile/build/app/outputs/flutter-apk/app-release.apk revue-eco-bf.apk
+
+      - name: Publier la Release GitHub
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: apk-${{ github.run_number }}
+          name: "Revue Éco BF — build ${{ github.run_number }}"
+          body: |
+            APK généré automatiquement par GitHub Actions à partir de la branche `${{ github.ref_name }}`.
+
+            Installation : téléchargez `revue-eco-bf.apk` sur votre téléphone Android, puis ouvrez le
+            fichier (autorisez « Installer des applications inconnues » si Android le demande).
+            L'application s'ouvre directement, sans compte ni connexion à créer.
+          files: revue-eco-bf.apk

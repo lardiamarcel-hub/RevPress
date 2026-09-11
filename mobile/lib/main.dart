@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:provider/provider.dart';
@@ -13,28 +14,60 @@ import 'theme/app_theme.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   await initializeDateFormatting('fr_FR');
 
-  // App à usage individuel : authentification anonyme pour satisfaire les
-  // règles Firestore (lecture/écriture réservées aux utilisateurs authentifiés).
-  if (FirebaseAuth.instance.currentUser == null) {
-    await FirebaseAuth.instance.signInAnonymously();
+  // L'application doit s'ouvrir et être utilisable sans aucune condition de
+  // connexion : si Firebase n'est pas encore configuré pour ce build (pas de
+  // vrai projet, pas de backend déployé) ou si le réseau est indisponible,
+  // on continue quand même — les écrans affichent alors simplement "aucun
+  // article disponible" au lieu de planter au démarrage.
+  final firebaseReady = await _initFirebaseSafely();
+
+  runApp(RevueEcoBfApp(firebaseReady: firebaseReady));
+}
+
+Future<bool> _initFirebaseSafely() async {
+  try {
+    await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  } catch (e) {
+    debugPrint('Firebase indisponible, l\'application démarre en mode hors-ligne : $e');
+    return false;
   }
 
-  await NotificationService.instance.initialize();
+  // Authentification anonyme, requise par les règles Firestore. Un échec
+  // (projet non configuré, pas de réseau) ne doit jamais bloquer l'ouverture
+  // de l'application — il n'y a de toute façon aucun écran de connexion.
+  try {
+    if (FirebaseAuth.instance.currentUser == null) {
+      await FirebaseAuth.instance.signInAnonymously();
+    }
+  } catch (e) {
+    debugPrint('Authentification anonyme indisponible (pas bloquant) : $e');
+  }
 
-  runApp(const RevueEcoBfApp());
+  try {
+    await NotificationService.instance.initialize();
+  } catch (e) {
+    debugPrint('Notifications indisponibles (pas bloquant) : $e');
+  }
+
+  return true;
 }
 
 class RevueEcoBfApp extends StatelessWidget {
-  const RevueEcoBfApp({super.key});
+  const RevueEcoBfApp({super.key, required this.firebaseReady});
+
+  final bool firebaseReady;
 
   @override
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
-        Provider<FirestoreService>(create: (_) => FirestoreService(firestore: FirebaseFirestore.instance)),
+        Provider<FirestoreService>(
+          create: (_) => FirestoreService(
+            firestore: firebaseReady ? FirebaseFirestore.instance : null,
+          ),
+        ),
       ],
       child: MaterialApp(
         title: 'Revue Éco BF',
