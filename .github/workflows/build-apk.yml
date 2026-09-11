@@ -31,8 +31,8 @@ jobs:
       # create par défaut génère minSdkVersion 21.
       - name: Relever minSdkVersion à 23 (requis par firebase-auth)
         run: |
-          sed -i 's/minSdkVersion flutter.minSdkVersion/minSdkVersion 23/' mobile/android/app/build.gradle
-          grep -q 'minSdkVersion 23' mobile/android/app/build.gradle || { echo "::error::minSdkVersion patch failed"; cat mobile/android/app/build.gradle; exit 1; }
+          sed -i 's/minSdk = flutter.minSdkVersion/minSdk = 23/' mobile/android/app/build.gradle
+          grep -q 'minSdk = 23' mobile/android/app/build.gradle || { echo "::error::minSdkVersion patch failed"; cat mobile/android/app/build.gradle; exit 1; }
 
       - name: Installer les dépendances
         working-directory: mobile
