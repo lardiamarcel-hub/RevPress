@@ -22,7 +22,10 @@ jobs:
       # générés ici, à la volée, à chaque build.
       - name: Générer les dossiers de plateforme
         working-directory: mobile
-        run: flutter create --platforms=android --org bf.cci.revueecobf .
+        run: flutter create --platforms=android --org bf.cci.revueecobf --project-name revue_eco_bf .
+
+      - name: Retirer le test généré par défaut (ne correspond pas à cette app)
+        run: rm -f mobile/test/widget_test.dart
 
       - name: Installer les dépendances
         working-directory: mobile
