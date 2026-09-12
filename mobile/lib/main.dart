@@ -9,6 +9,7 @@ import 'package:provider/provider.dart';
 import 'firebase_options.dart';
 import 'screens/home_screen.dart';
 import 'services/cloud_functions_service.dart';
+import 'services/favorites_service.dart';
 import 'services/firestore_service.dart';
 import 'services/notification_service.dart';
 import 'theme/app_theme.dart';
@@ -73,6 +74,9 @@ class RevueEcoBfApp extends StatelessWidget {
           create: (_) => CloudFunctionsService(
             functions: firebaseReady ? FirebaseFunctions.instance : null,
           ),
+        ),
+        ChangeNotifierProvider<FavoritesService>(
+          create: (_) => FavoritesService()..load(),
         ),
       ],
       child: MaterialApp(

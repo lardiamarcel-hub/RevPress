@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../config/theme_angles.dart';
 import 'digest/digest_history_screen.dart';
 import 'digest/digest_screen.dart';
+import 'favorites/favorites_screen.dart';
 import 'search/search_screen.dart';
 import 'settings/settings_screen.dart';
 import 'tabs/angle_tab_screen.dart';
@@ -32,6 +33,13 @@ class _HomeScreenState extends State<HomeScreen> {
             tooltip: 'Rechercher',
             onPressed: () => Navigator.of(context).push(
               MaterialPageRoute(builder: (_) => SearchScreen(initialAngle: _currentAngle)),
+            ),
+          ),
+          IconButton(
+            icon: const Icon(Icons.star_border),
+            tooltip: 'Favoris',
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const FavoritesScreen()),
             ),
           ),
           IconButton(

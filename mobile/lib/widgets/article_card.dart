@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../models/article.dart';
+import '../services/favorites_service.dart';
+import '../utils/relative_time.dart';
 
 class ArticleCard extends StatelessWidget {
   const ArticleCard({super.key, required this.article, this.showAngleBadge = false});
@@ -12,7 +15,6 @@ class ArticleCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final dateFormat = DateFormat('d MMM yyyy', 'fr_FR');
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(14),
@@ -33,7 +35,7 @@ class ArticleCard extends StatelessWidget {
               children: [
                 Expanded(
                   child: Text(
-                    '${article.source} · ${dateFormat.format(article.datePublication)}',
+                    '${article.source} · ${formatRelativeTime(article.datePublication)}',
                     style: Theme.of(context).textTheme.bodySmall,
                   ),
                 ),
@@ -50,13 +52,36 @@ class ArticleCard extends StatelessWidget {
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(fontStyle: FontStyle.italic),
               ),
             ],
-            Align(
-              alignment: Alignment.centerRight,
-              child: TextButton.icon(
-                onPressed: () => launchUrl(Uri.parse(article.url), mode: LaunchMode.externalApplication),
-                icon: const Icon(Icons.open_in_new, size: 16),
-                label: const Text("Lire l'original"),
-              ),
+            Row(
+              children: [
+                Expanded(
+                  child: TextButton.icon(
+                    onPressed: () => launchUrl(Uri.parse(article.url), mode: LaunchMode.externalApplication),
+                    icon: const Icon(Icons.open_in_new, size: 16),
+                    label: const Text("Lire l'original"),
+                  ),
+                ),
+                Consumer<FavoritesService>(
+                  builder: (context, favorites, _) {
+                    final isFavorite = favorites.isFavorite(article.id);
+                    return IconButton(
+                      tooltip: isFavorite ? 'Retirer des favoris' : 'Ajouter aux favoris',
+                      icon: Icon(
+                        isFavorite ? Icons.star : Icons.star_border,
+                        color: isFavorite ? Colors.amber[700] : null,
+                      ),
+                      onPressed: () => favorites.toggle(article.id),
+                    );
+                  },
+                ),
+                IconButton(
+                  tooltip: 'Partager',
+                  icon: const Icon(Icons.share_outlined),
+                  onPressed: () => SharePlus.instance.share(
+                    ShareParams(text: '${article.titre}\n${article.url}', subject: article.titre),
+                  ),
+                ),
+              ],
             ),
           ],
         ),
