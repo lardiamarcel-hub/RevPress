@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
@@ -7,6 +8,7 @@ import 'package:provider/provider.dart';
 
 import 'firebase_options.dart';
 import 'screens/home_screen.dart';
+import 'services/cloud_functions_service.dart';
 import 'services/firestore_service.dart';
 import 'services/notification_service.dart';
 import 'theme/app_theme.dart';
@@ -65,6 +67,11 @@ class RevueEcoBfApp extends StatelessWidget {
         Provider<FirestoreService>(
           create: (_) => FirestoreService(
             firestore: firebaseReady ? FirebaseFirestore.instance : null,
+          ),
+        ),
+        Provider<CloudFunctionsService>(
+          create: (_) => CloudFunctionsService(
+            functions: firebaseReady ? FirebaseFunctions.instance : null,
           ),
         ),
       ],

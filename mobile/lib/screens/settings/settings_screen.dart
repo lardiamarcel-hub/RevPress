@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../config/theme_angles.dart';
 import '../../models/source_config.dart';
 import '../../providers/settings_provider.dart';
+import '../../services/cloud_functions_service.dart';
 import '../../services/firestore_service.dart';
 import 'source_form_dialog.dart';
 
@@ -38,6 +39,7 @@ class SettingsScreen extends StatelessWidget {
                   groupValue: settings.frequence,
                   onChanged: (value) => settings.setFrequence(value!),
                 ),
+                const _RefreshActions(),
                 const Divider(),
                 const _SectionHeader('Notifications'),
                 SwitchListTile(
@@ -72,6 +74,71 @@ class _SectionHeader extends StatelessWidget {
               fontWeight: FontWeight.bold,
             ),
       ),
+    );
+  }
+}
+
+/// Actions manuelles côté serveur : importer la liste de sources de départ
+/// (rapide, gratuit) et lancer une collecte complète immédiatement au lieu
+/// d'attendre la prochaine collecte planifiée (plus long, appelle l'IA).
+class _RefreshActions extends StatefulWidget {
+  const _RefreshActions();
+
+  @override
+  State<_RefreshActions> createState() => _RefreshActionsState();
+}
+
+class _RefreshActionsState extends State<_RefreshActions> {
+  bool _seeding = false;
+  bool _refreshing = false;
+
+  Future<void> _runSeed() async {
+    final service = context.read<CloudFunctionsService>();
+    setState(() => _seeding = true);
+    final result = await service.seedSources();
+    if (!mounted) return;
+    setState(() => _seeding = false);
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(result.message)));
+  }
+
+  Future<void> _runRefresh() async {
+    final service = context.read<CloudFunctionsService>();
+    setState(() => _refreshing = true);
+    final result = await service.manualRefresh();
+    if (!mounted) return;
+    setState(() => _refreshing = false);
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(result.message)));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        ListTile(
+          leading: _seeding
+              ? const SizedBox(
+                  width: 24,
+                  height: 24,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Icon(Icons.cloud_download_outlined),
+          title: const Text('Importer la liste de sources'),
+          subtitle: const Text('À faire une fois, quand la liste des sources est vide.'),
+          onTap: (_seeding || _refreshing) ? null : _runSeed,
+        ),
+        ListTile(
+          leading: _refreshing
+              ? const SizedBox(
+                  width: 24,
+                  height: 24,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Icon(Icons.refresh),
+          title: const Text('Actualiser maintenant'),
+          subtitle: const Text('Lance une collecte complète immédiatement (peut prendre plusieurs minutes).'),
+          onTap: (_seeding || _refreshing) ? null : _runRefresh,
+        ),
+      ],
     );
   }
 }

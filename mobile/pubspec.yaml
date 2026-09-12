@@ -17,6 +17,7 @@ dependencies:
   cloud_firestore: ^5.4.4
   firebase_auth: ^5.3.2
   firebase_messaging: ^15.1.4
+  cloud_functions: ^5.1.4
 
   # State management
   provider: ^6.1.2
