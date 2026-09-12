@@ -32,6 +32,17 @@ jobs:
           sed -i 's/android:label="revue_eco_bf"/android:label="Revue Éco BF"/' mobile/android/app/src/main/AndroidManifest.xml
           grep -q 'android:label="Revue Éco BF"' mobile/android/app/src/main/AndroidManifest.xml || { echo "::error::app label patch failed"; cat mobile/android/app/src/main/AndroidManifest.xml; exit 1; }
 
+      # Sans Firebase, plus aucun plugin natif n'apporte la permission INTERNET
+      # via la fusion de manifeste (les plugins Firebase le faisaient). Le
+      # manifeste "main" (utilisé en release) ne l'inclut pas par défaut —
+      # seuls les manifestes debug/profile l'ont, pour l'observatoire Flutter.
+      # Sans elle, tout accès réseau (ajout de flux, actualisation) échoue
+      # silencieusement en release.
+      - name: Ajouter la permission INTERNET (requise pour les flux RSS)
+        run: |
+          sed -i '/<manifest xmlns:android=/a\    <uses-permission android:name="android.permission.INTERNET"/>' mobile/android/app/src/main/AndroidManifest.xml
+          grep -q 'android.permission.INTERNET' mobile/android/app/src/main/AndroidManifest.xml || { echo "::error::INTERNET permission patch failed"; cat mobile/android/app/src/main/AndroidManifest.xml; exit 1; }
+
       - name: Installer les dépendances
         working-directory: mobile
         run: flutter pub get

@@ -120,9 +120,24 @@ réel des flux RSS — validé empiriquement avant intégration.
 - **Liste d'articles** : glisser pour actualiser, filtre non-lus, tout
   marquer comme lu.
 - **Détail d'un article** : extrait fourni par le flux, favori, partage,
-  marquer non lu, lien vers l'article complet sur le site d'origine.
+  marquer non lu, lien vers l'article complet sur le site d'origine, et un
+  bouton optionnel « Résumer avec l'IA ».
 - **Recherche** : filtre local sur les articles déjà téléchargés (titre,
   extrait, nom du flux).
+- **Réglages** : clé API Anthropic (optionnelle), pour le résumé IA.
+
+## 5bis. Résumé par IA (optionnel, à la demande)
+
+Fonctionnalité annexe qui ne remet pas en cause l'architecture 100% locale :
+l'utilisateur fournit sa **propre** clé API Anthropic (Réglages), stockée
+dans la table `settings` (clé/valeur) de la base locale — jamais envoyée
+ailleurs qu'à `api.anthropic.com`. `services/ai_summary_service.dart` appelle
+`POST https://api.anthropic.com/v1/messages` en HTTP brut (Dart n'a pas de
+SDK officiel Anthropic) avec `claude-opus-5` et `output_config.effort: "low"`
+(tâche de résumé simple, pas besoin de raisonnement poussé). Le résumé
+généré est stocké dans `articles.resume_ia` pour ne pas être régénéré (et
+refacturé) à chaque ouverture. Sans clé configurée, le bouton affiche
+simplement une invite vers Réglages — le reste de l'app est inchangé.
 
 ## 6. CI / génération de l'APK
 

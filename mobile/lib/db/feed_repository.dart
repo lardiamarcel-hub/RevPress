@@ -186,6 +186,35 @@ class FeedRepository {
     await db.update('articles', {'favori': favori ? 1 : 0}, where: 'id = ?', whereArgs: [articleId]);
   }
 
+  /// Enregistre le résumé généré par l'IA à la demande, pour ne pas avoir à
+  /// le regénérer (et le refacturer) à chaque ouverture de l'article.
+  Future<void> setAiSummary(String articleId, String resumeIa) async {
+    final db = await _db;
+    await db.update('articles', {'resume_ia': resumeIa}, where: 'id = ?', whereArgs: [articleId]);
+  }
+
+  // --- Réglages (clé/valeur) ---
+
+  Future<String?> getSetting(String cle) async {
+    final db = await _db;
+    final rows = await db.query('settings', where: 'cle = ?', whereArgs: [cle], limit: 1);
+    if (rows.isEmpty) return null;
+    return rows.first['valeur'] as String?;
+  }
+
+  Future<void> setSetting(String cle, String? valeur) async {
+    final db = await _db;
+    if (valeur == null || valeur.isEmpty) {
+      await db.delete('settings', where: 'cle = ?', whereArgs: [cle]);
+    } else {
+      await db.insert(
+        'settings',
+        {'cle': cle, 'valeur': valeur},
+        conflictAlgorithm: ConflictAlgorithm.replace,
+      );
+    }
+  }
+
   Future<void> markAllRead({String? folderId, String? feedId}) async {
     final db = await _db;
     if (feedId != null) {
@@ -248,6 +277,7 @@ class FeedRepository {
         titre: row['titre'] as String,
         lien: row['lien'] as String,
         contenu: row['contenu'] as String? ?? '',
+        resumeIa: row['resume_ia'] as String?,
         datePublication: DateTime.fromMillisecondsSinceEpoch(row['date_publication'] as int),
         lu: ((row['lu'] as int?) ?? 0) == 1,
         favori: ((row['favori'] as int?) ?? 0) == 1,

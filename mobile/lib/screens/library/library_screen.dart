@@ -7,6 +7,7 @@ import '../../models/folder.dart';
 import '../../providers/library_provider.dart';
 import '../articles/article_list_screen.dart';
 import '../search/search_screen.dart';
+import '../settings/settings_screen.dart';
 import 'feed_form_screen.dart';
 
 /// Écran d'accueil façon Feedly : « Tous les articles », « Favoris », puis
@@ -56,9 +57,15 @@ class LibraryScreen extends StatelessWidget {
           PopupMenuButton<String>(
             onSelected: (value) {
               if (value == 'import') _importCuratedSources(context);
+              if (value == 'reglages') {
+                Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const SettingsScreen()),
+                );
+              }
             },
             itemBuilder: (context) => const [
               PopupMenuItem(value: 'import', child: Text('Importer une sélection de sources')),
+              PopupMenuItem(value: 'reglages', child: Text('Réglages')),
             ],
           ),
         ],

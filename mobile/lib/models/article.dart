@@ -1,6 +1,8 @@
 /// Un article tel que fourni par le flux de sa source (titre, résumé/contenu
-/// tel que publié, lien, date). Rien n'est réécrit ni résumé par une IA —
+/// tel que publié, lien, date). Le contenu n'est jamais réécrit par une IA —
 /// c'est exactement ce que le flux RSS/Atom du site propose à ses lecteurs.
+/// `resumeIa` est un résumé optionnel, généré à la demande par l'utilisateur
+/// (voir Réglages > clé API Anthropic), jamais automatique.
 class Article {
   const Article({
     required this.id,
@@ -9,6 +11,7 @@ class Article {
     required this.titre,
     required this.lien,
     required this.contenu,
+    required this.resumeIa,
     required this.datePublication,
     required this.lu,
     required this.favori,
@@ -20,6 +23,7 @@ class Article {
   final String titre;
   final String lien;
   final String contenu;
+  final String? resumeIa;
   final DateTime datePublication;
   final bool lu;
   final bool favori;

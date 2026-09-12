@@ -22,7 +22,7 @@ class AppDatabase {
     final path = p.join(dbPath, 'revue_eco_bf.db');
     return openDatabase(
       path,
-      version: 1,
+      version: 2,
       onConfigure: (db) async {
         await db.execute('PRAGMA foreign_keys = ON');
       },
@@ -55,6 +55,7 @@ class AppDatabase {
             titre TEXT NOT NULL,
             lien TEXT NOT NULL,
             contenu TEXT NOT NULL DEFAULT '',
+            resume_ia TEXT,
             date_publication INTEGER NOT NULL,
             date_ajout INTEGER NOT NULL,
             lu INTEGER NOT NULL DEFAULT 0,
@@ -66,7 +67,23 @@ class AppDatabase {
         await db.execute('CREATE INDEX idx_articles_date ON articles(date_publication)');
         await db.execute('CREATE INDEX idx_articles_favori ON articles(favori)');
         await db.execute('CREATE INDEX idx_feeds_folder ON feeds(folder_id)');
+        await _createSettingsTable(db);
+      },
+      onUpgrade: (db, oldVersion, newVersion) async {
+        if (oldVersion < 2) {
+          await db.execute('ALTER TABLE articles ADD COLUMN resume_ia TEXT');
+          await _createSettingsTable(db);
+        }
       },
     );
+  }
+
+  Future<void> _createSettingsTable(Database db) async {
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS settings (
+        cle TEXT PRIMARY KEY,
+        valeur TEXT
+      )
+    ''');
   }
 }
