@@ -1,4 +1,4 @@
-import 'source_config.dart';
+import '../models/source_config.dart';
 import 'theme_angles.dart';
 
 /// Liste de sources par défaut, utilisée uniquement pour référence/affichage

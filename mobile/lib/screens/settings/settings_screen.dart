@@ -83,7 +83,7 @@ class _SourcesSection extends StatelessWidget {
     final result = await showSourceFormDialog(context);
     if (result == null) return;
     final ok = await firestoreService.addSource(result);
-    if (context.mounted) _notify(context, ok, "Source ajoutée.", "Échec de l'ajout de la source.");
+    if (context.mounted) _notify(context, ok, 'Source ajoutée.', "Échec de l'ajout de la source.");
   }
 
   Future<void> _openEditDialog(
@@ -94,7 +94,7 @@ class _SourcesSection extends StatelessWidget {
     final result = await showSourceFormDialog(context, existing: source);
     if (result == null) return;
     final ok = await firestoreService.updateSource(result);
-    if (context.mounted) _notify(context, ok, "Source modifiée.", "Échec de la modification.");
+    if (context.mounted) _notify(context, ok, 'Source modifiée.', 'Échec de la modification.');
   }
 
   Future<void> _confirmDelete(
@@ -115,7 +115,7 @@ class _SourcesSection extends StatelessWidget {
     );
     if (confirmed != true) return;
     final ok = await firestoreService.deleteSource(source.id);
-    if (context.mounted) _notify(context, ok, "Source supprimée.", "Échec de la suppression.");
+    if (context.mounted) _notify(context, ok, 'Source supprimée.', 'Échec de la suppression.');
   }
 
   void _notify(BuildContext context, bool ok, String successMessage, String failureMessage) {
@@ -166,7 +166,7 @@ class _SourcesSection extends StatelessWidget {
                 padding: EdgeInsets.all(16),
                 child: Text(
                   "Aucune source configurée pour l'instant. Utilisez « Ajouter » ci-dessus, "
-                  "ou patientez le temps que le backend amorce la liste de départ.",
+                  'ou patientez le temps que le backend amorce la liste de départ.',
                 ),
               );
             }
