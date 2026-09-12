@@ -28,7 +28,7 @@ export async function collectFromRss(sourceId: string, source: SourceDoc): Promi
         contenuBrut: `${item.title}. ${stripHtml(item.contentSnippet || item.content || '')}`.slice(0, 2000),
         sourceId,
         sourceNom: source.nom,
-        accesPayant: source.accesPayant,
+        accesPayant: source.acces === 'payant',
       }));
   } catch (error) {
     console.error(`Échec de la collecte RSS pour ${source.nom} (${source.fluxRss}):`, error);

@@ -81,16 +81,16 @@ RevPress/
 ## 2. Schéma Firestore
 
 ### `sources/{sourceId}`
-Config modifiable depuis l'écran Réglages ; source de vérité pour la collecte.
+Gérée en CRUD complet (ajout/modification/suppression/activation) depuis l'écran
+Réglages ; source de vérité pour la collecte.
 | Champ | Type | Description |
 |---|---|---|
 | nom | string | Nom affiché (ex. « L'Économiste du Faso ») |
-| domaine | string | Domaine racine (ex. `leconomistedufaso.bf`) |
-| fluxRss | string \| null | URL du flux RSS officiel si trouvé |
-| methodeCollecte | `rss` \| `google_news_rss` | Stratégie de repli si pas de flux RSS |
-| categorie | `presse_bf` \| `presse_eco_bf` \| `institution` \| `presse_regionale` \| `presse_aes` \| `international` | Catégorie de la table de sources |
-| accesPayant | bool | Si vrai, on ne stocke jamais que titre + lien |
+| url | string | Site de la source (peut être vide pour une source « à confirmer ») |
+| acces | `gratuit` \| `gratuit_partiel` \| `payant` | Si `payant`, on ne stocke jamais que titre + lien |
+| onglets | string[] | Onglets couverts (ids parmi les 5 angles, ou `transverse` pour les 5) — informatif : le classement réel se fait par article, via Claude |
 | actif | bool | Source incluse ou non dans la prochaine collecte |
+| fluxRss | string \| null (optionnel) | Flux RSS officiel connu, non exposé dans l'UI ; absent → repli Google News RSS sur le domaine extrait de `url` |
 
 ### `articles/{articleId}`
 | Champ | Type | Description |

@@ -122,13 +122,39 @@ class FirestoreService {
     }
   }
 
-  Future<void> addSource(SourceConfig source) async {
+  /// Ajoute une nouvelle source (un identifiant Firestore est généré
+  /// automatiquement). Retourne `true` si l'ajout a réussi.
+  Future<bool> addSource(SourceConfig source) async {
     final db = _db;
-    if (db == null) return;
+    if (db == null) return false;
+    try {
+      await db.collection(_sourcesCollection).add(source.toFirestore());
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Met à jour une source existante (identifiée par `source.id`).
+  Future<bool> updateSource(SourceConfig source) async {
+    final db = _db;
+    if (db == null) return false;
     try {
       await db.collection(_sourcesCollection).doc(source.id).set(source.toFirestore());
+      return true;
     } catch (_) {
-      // Pas de backend connecté : action silencieusement ignorée.
+      return false;
+    }
+  }
+
+  Future<bool> deleteSource(String sourceId) async {
+    final db = _db;
+    if (db == null) return false;
+    try {
+      await db.collection(_sourcesCollection).doc(sourceId).delete();
+      return true;
+    } catch (_) {
+      return false;
     }
   }
 

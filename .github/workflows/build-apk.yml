@@ -34,9 +34,18 @@ jobs:
           sed -i 's/minSdk = flutter.minSdkVersion/minSdk = 23/' mobile/android/app/build.gradle
           grep -q 'minSdk = 23' mobile/android/app/build.gradle || { echo "::error::minSdkVersion patch failed"; cat mobile/android/app/build.gradle; exit 1; }
 
+      - name: Renommer l'application affichée sur le téléphone
+        run: |
+          sed -i 's/android:label="revue_eco_bf"/android:label="Revue Éco BF"/' mobile/android/app/src/main/AndroidManifest.xml
+          grep -q 'android:label="Revue Éco BF"' mobile/android/app/src/main/AndroidManifest.xml || { echo "::error::app label patch failed"; cat mobile/android/app/src/main/AndroidManifest.xml; exit 1; }
+
       - name: Installer les dépendances
         working-directory: mobile
         run: flutter pub get
+
+      - name: Générer l'icône de l'application
+        working-directory: mobile
+        run: dart run flutter_launcher_icons
 
       - name: Analyser le code
         working-directory: mobile

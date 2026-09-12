@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../config/theme_angles.dart';
 import '../../models/source_config.dart';
 import '../../providers/settings_provider.dart';
 import '../../services/firestore_service.dart';
+import 'source_form_dialog.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -44,8 +46,7 @@ class SettingsScreen extends StatelessWidget {
                   onChanged: settings.setNotificationsActives,
                 ),
                 const Divider(),
-                const _SectionHeader('Sources suivies'),
-                const _SourcesList(),
+                const _SourcesSection(),
               ],
             );
           },
@@ -75,40 +76,186 @@ class _SectionHeader extends StatelessWidget {
   }
 }
 
-class _SourcesList extends StatelessWidget {
-  const _SourcesList();
+class _SourcesSection extends StatelessWidget {
+  const _SourcesSection();
+
+  Future<void> _openAddDialog(BuildContext context, FirestoreService firestoreService) async {
+    final result = await showSourceFormDialog(context);
+    if (result == null) return;
+    final ok = await firestoreService.addSource(result);
+    if (context.mounted) _notify(context, ok, "Source ajoutée.", "Échec de l'ajout de la source.");
+  }
+
+  Future<void> _openEditDialog(
+    BuildContext context,
+    FirestoreService firestoreService,
+    SourceConfig source,
+  ) async {
+    final result = await showSourceFormDialog(context, existing: source);
+    if (result == null) return;
+    final ok = await firestoreService.updateSource(result);
+    if (context.mounted) _notify(context, ok, "Source modifiée.", "Échec de la modification.");
+  }
+
+  Future<void> _confirmDelete(
+    BuildContext context,
+    FirestoreService firestoreService,
+    SourceConfig source,
+  ) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Supprimer cette source ?'),
+        content: Text('« ${source.nom} » ne sera plus interrogée lors des prochaines collectes.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Annuler')),
+          FilledButton(onPressed: () => Navigator.of(context).pop(true), child: const Text('Supprimer')),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    final ok = await firestoreService.deleteSource(source.id);
+    if (context.mounted) _notify(context, ok, "Source supprimée.", "Échec de la suppression.");
+  }
+
+  void _notify(BuildContext context, bool ok, String successMessage, String failureMessage) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(ok ? successMessage : failureMessage)),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     final firestoreService = context.read<FirestoreService>();
-    return StreamBuilder<List<SourceConfig>>(
-      stream: firestoreService.watchSources(),
-      builder: (context, snapshot) {
-        if (!snapshot.hasData) {
-          return const Padding(
-            padding: EdgeInsets.all(24),
-            child: Center(child: CircularProgressIndicator()),
-          );
-        }
-        final sources = snapshot.data!;
-        if (sources.isEmpty) {
-          return const Padding(
-            padding: EdgeInsets.all(16),
-            child: Text('Aucune source configurée. Exécutez la fonction `seedSources` côté backend.'),
-          );
-        }
-        return Column(
-          children: sources
-              .map((source) => SwitchListTile(
-                    title: Text(source.nom),
-                    subtitle: Text('${source.domaine} · ${source.methodeCollecte}'
-                        '${source.accesPayant ? ' · payant (titre + lien)' : ''}'),
-                    value: source.actif,
-                    onChanged: (value) => firestoreService.setSourceActive(source.id, value),
-                  ))
-              .toList(),
-        );
-      },
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 16, 8, 4),
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'Sources suivies',
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        color: Theme.of(context).colorScheme.primary,
+                        fontWeight: FontWeight.bold,
+                      ),
+                ),
+              ),
+              TextButton.icon(
+                onPressed: () => _openAddDialog(context, firestoreService),
+                icon: const Icon(Icons.add),
+                label: const Text('Ajouter'),
+              ),
+            ],
+          ),
+        ),
+        StreamBuilder<List<SourceConfig>>(
+          stream: firestoreService.watchSources(),
+          builder: (context, snapshot) {
+            if (!snapshot.hasData) {
+              return const Padding(
+                padding: EdgeInsets.all(24),
+                child: Center(child: CircularProgressIndicator()),
+              );
+            }
+            final sources = snapshot.data!;
+            if (sources.isEmpty) {
+              return const Padding(
+                padding: EdgeInsets.all(16),
+                child: Text(
+                  "Aucune source configurée pour l'instant. Utilisez « Ajouter » ci-dessus, "
+                  "ou patientez le temps que le backend amorce la liste de départ.",
+                ),
+              );
+            }
+            return Column(
+              children: sources
+                  .map((source) => _SourceTile(
+                        source: source,
+                        onToggleActive: (value) => firestoreService.setSourceActive(source.id, value),
+                        onEdit: () => _openEditDialog(context, firestoreService, source),
+                        onDelete: () => _confirmDelete(context, firestoreService, source),
+                      ))
+                  .toList(),
+            );
+          },
+        ),
+      ],
+    );
+  }
+}
+
+class _SourceTile extends StatelessWidget {
+  const _SourceTile({
+    required this.source,
+    required this.onToggleActive,
+    required this.onEdit,
+    required this.onDelete,
+  });
+
+  final SourceConfig source;
+  final ValueChanged<bool> onToggleActive;
+  final VoidCallback onEdit;
+  final VoidCallback onDelete;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      title: Text(source.nom),
+      subtitle: Padding(
+        padding: const EdgeInsets.only(top: 4),
+        child: Wrap(
+          spacing: 6,
+          runSpacing: 4,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          children: [
+            Text(
+              source.url.isEmpty ? '(URL non renseignée)' : source.url,
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+            _Badge(label: source.acces.label),
+            ...source.onglets.map((o) => _Badge(label: ongletLabel(o))),
+          ],
+        ),
+      ),
+      isThreeLine: true,
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Switch(value: source.actif, onChanged: onToggleActive),
+          PopupMenuButton<String>(
+            onSelected: (value) {
+              if (value == 'modifier') onEdit();
+              if (value == 'supprimer') onDelete();
+            },
+            itemBuilder: (context) => const [
+              PopupMenuItem(value: 'modifier', child: Text('Modifier')),
+              PopupMenuItem(value: 'supprimer', child: Text('Supprimer')),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _Badge extends StatelessWidget {
+  const _Badge({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = Theme.of(context).colorScheme.secondary;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.12),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Text(label, style: TextStyle(fontSize: 11, color: color)),
     );
   }
 }

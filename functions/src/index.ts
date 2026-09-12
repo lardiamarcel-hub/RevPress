@@ -43,14 +43,15 @@ async function runPressReviewPipeline(): Promise<{ articlesCollectes: number; di
   }
 
   const sourcesSnap = await db.collection('sources').where('actif', '==', true).get();
-  const sources = sourcesSnap.docs.map((doc) => ({ id: doc.id, ...(doc.data() as SourceDoc) }));
+  const sources = sourcesSnap.docs
+    .map((doc) => ({ id: doc.id, ...(doc.data() as SourceDoc) }))
+    .filter((source) => !!source.url); // ignore les sources "à confirmer" sans URL
 
   const rawItems: RawFeedItem[] = [];
   for (const source of sources) {
-    const items =
-      source.methodeCollecte === 'rss'
-        ? await collectFromRss(source.id, source)
-        : await collectFromGoogleNewsFallback(source.id, source);
+    const items = source.fluxRss
+      ? await collectFromRss(source.id, source)
+      : await collectFromGoogleNewsFallback(source.id, source);
     rawItems.push(...items);
   }
 

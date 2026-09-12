@@ -13,7 +13,15 @@ export async function collectFromGoogleNewsFallback(
   sourceId: string,
   source: SourceDoc,
 ): Promise<RawFeedItem[]> {
-  const query = encodeURIComponent(`site:${source.domaine} economie`);
+  let domaine: string;
+  try {
+    domaine = new URL(source.url).hostname;
+  } catch {
+    console.warn(`URL invalide ou vide pour la source ${source.nom}, repli Google News ignoré.`);
+    return [];
+  }
+
+  const query = encodeURIComponent(`site:${domaine} economie`);
   const feedUrl = `https://news.google.com/rss/search?q=${query}&hl=fr&gl=BF&ceid=BF:fr`;
 
   try {
@@ -27,7 +35,7 @@ export async function collectFromGoogleNewsFallback(
         contenuBrut: item.title!.trim(),
         sourceId,
         sourceNom: source.nom,
-        accesPayant: source.accesPayant,
+        accesPayant: source.acces === 'payant',
       }));
   } catch (error) {
     console.error(`Échec du repli Google News pour ${source.nom}:`, error);

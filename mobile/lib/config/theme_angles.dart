@@ -77,3 +77,14 @@ extension ThemeAngleX on ThemeAngle {
     ThemeAngle.secteurPrive,
   ];
 }
+
+/// Identifiant spécial utilisé dans `sources.onglets` pour une source qui
+/// alimente les 5 onglets (classée ensuite par angle article par article).
+const String transverseOngletId = 'transverse';
+
+/// Libellé lisible pour un identifiant d'onglet stocké sur une source,
+/// y compris le cas spécial "transverse".
+String ongletLabel(String ongletId) {
+  if (ongletId == transverseOngletId) return 'Tous les onglets (transverse)';
+  return ThemeAngleX.fromId(ongletId).label;
+}

@@ -16,24 +16,23 @@ export const THEME_ANGLES: ThemeAngleId[] = [
 
 export type Fiabilite = 'haute' | 'moyenne' | 'faible';
 
-export type MethodeCollecte = 'rss' | 'google_news_rss';
-
-export type SourceCategorie =
-  | 'presseBf'
-  | 'presseEcoBf'
-  | 'institution'
-  | 'presseRegionale'
-  | 'presseAes'
-  | 'international';
+export type AccesType = 'gratuit' | 'gratuit_partiel' | 'payant';
 
 export interface SourceDoc {
   nom: string;
-  domaine: string;
-  fluxRss: string | null;
-  methodeCollecte: MethodeCollecte;
-  categorie: SourceCategorie;
-  accesPayant: boolean;
+  /** URL du site (peut être vide pour une source "à confirmer"). */
+  url: string;
+  acces: AccesType;
+  /** Onglets couverts (parmi THEME_ANGLES, ou "transverse") — informatif :
+   *  le classement réel se fait par article, via Claude. */
+  onglets: string[];
   actif: boolean;
+  /**
+   * Flux RSS officiel connu pour cette source (optionnel, non exposé dans
+   * l'écran Réglages). Quand absent, la collecte utilise le repli Google
+   * News RSS filtré par domaine (extrait de `url`).
+   */
+  fluxRss?: string | null;
 }
 
 /** Un item brut récupéré depuis un flux RSS, avant classification. */
