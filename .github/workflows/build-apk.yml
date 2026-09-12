@@ -27,13 +27,6 @@ jobs:
       - name: Retirer le test généré par défaut (ne correspond pas à cette app)
         run: rm -f mobile/test/widget_test.dart
 
-      # firebase-auth (23.2.1) exige minSdkVersion 23 ; le template flutter
-      # create par défaut génère minSdkVersion 21.
-      - name: Relever minSdkVersion à 23 (requis par firebase-auth)
-        run: |
-          sed -i 's/minSdk = flutter.minSdkVersion/minSdk = 23/' mobile/android/app/build.gradle
-          grep -q 'minSdk = 23' mobile/android/app/build.gradle || { echo "::error::minSdkVersion patch failed"; cat mobile/android/app/build.gradle; exit 1; }
-
       - name: Renommer l'application affichée sur le téléphone
         run: |
           sed -i 's/android:label="revue_eco_bf"/android:label="Revue Éco BF"/' mobile/android/app/src/main/AndroidManifest.xml
@@ -68,5 +61,6 @@ jobs:
 
             Installation : téléchargez `revue-eco-bf.apk` sur votre téléphone Android, puis ouvrez le
             fichier (autorisez « Installer des applications inconnues » si Android le demande).
-            L'application s'ouvre directement, sans compte ni connexion à créer.
+            L'application fonctionne entièrement sur le téléphone, sans compte ni serveur à
+            configurer : ajoutez vos journaux et flux RSS directement depuis l'app.
           files: revue-eco-bf.apk

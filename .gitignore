@@ -14,15 +14,6 @@ mobile/windows/
 mobile/web/
 mobile/*.iml
 
-# Node / Firebase Functions
-functions/node_modules/
-functions/lib/
-functions/*.log
-firebase-debug.log
-firebase-debug.*.log
-.firebase/
-.firebaserc
-
 # Secrets
 *.env
 .env.*

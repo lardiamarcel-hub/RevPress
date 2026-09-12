@@ -1,149 +1,134 @@
-# Revue Éco BF — Plan d'architecture
+# Revue Éco BF — Architecture
 
-Application Flutter + Firebase qui automatise une revue de presse économique
-(Burkina Faso, UEMOA/AES, international) pour un usage individuel
-(Conseiller Technique CCI-BF / enseignant-chercheur).
+Lecteur de flux RSS façon **Feedly**, entièrement local : aucun backend à
+déployer, aucun compte à créer. L'application ajoute la possibilité
+d'inclure n'importe quel journal ou magazine (burkinabè ou non) via son
+adresse web ou son flux RSS/Atom direct.
 
-Décisions par défaut retenues (modifiables depuis l'écran Réglages) :
-- **Fréquence de collecte** : quotidienne (06h00, heure d'Ouagadougou), avec bascule hebdomadaire possible.
-- **Langue des résumés** : français.
+> Ce projet a d'abord été construit autour de Firebase (Firestore, Cloud
+> Functions, classification par IA). Cette architecture a été abandonnée :
+> elle exigeait un projet Firebase déployé, une clé API Anthropic et une
+> facturation pour fonctionner, ce qui rendait l'app inutilisable tant que
+> ce backend n'était pas configuré. La version actuelle fonctionne dès
+> l'installation.
 
-## 1. Structure de dossiers
+## 1. Principe
+
+- L'utilisateur ajoute des flux (journaux, magazines, institutions...),
+  organisés en dossiers, comme dans Feedly.
+- L'application va chercher les articles **directement depuis le
+  téléphone** (aucun serveur intermédiaire) et les stocke dans une base
+  SQLite locale.
+- Aucun classement par IA : c'est l'utilisateur qui organise ses flux en
+  dossiers. Aucun résumé généré : le texte affiché est celui que le flux
+  RSS du site fournit lui-même à ses lecteurs (titre + extrait), jamais
+  l'article complet.
+
+## 2. Structure de dossiers (`mobile/lib/`)
 
 ```
-RevPress/
-├── ARCHITECTURE.md
-├── README.md
-├── firebase.json
-├── firestore.rules
-├── firestore.indexes.json
-├── mobile/                        # App Flutter
-│   ├── pubspec.yaml
-│   └── lib/
-│       ├── main.dart
-│       ├── firebase_options.dart          # généré par `flutterfire configure`
-│       ├── config/
-│       │   ├── theme_angles.dart          # les 5 angles thématiques (enum + libellés)
-│       │   └── default_sources.dart       # liste de sources par défaut (seed local/UI)
-│       ├── models/
-│       │   ├── article.dart
-│       │   ├── digest.dart
-│       │   └── source_config.dart
-│       ├── services/
-│       │   ├── firestore_service.dart     # lecture/écriture Firestore
-│       │   └── notification_service.dart  # FCM + notifications locales
-│       ├── providers/
-│       │   ├── articles_provider.dart
-│       │   ├── digest_provider.dart
-│       │   └── settings_provider.dart
-│       ├── theme/
-│       │   └── app_theme.dart
-│       ├── widgets/
-│       │   ├── article_card.dart
-│       │   └── angle_articles_list.dart
-│       └── screens/
-│           ├── home_screen.dart           # shell : BottomNavigationBar à 5 onglets
-│           ├── tabs/
-│           │   └── angle_tab_screen.dart  # vue générique réutilisée par les 5 onglets
-│           ├── digest/
-│           │   ├── digest_screen.dart         # "Digest du jour"
-│           │   └── digest_history_screen.dart # historique des digests
-│           ├── search/
-│           │   └── search_screen.dart
-│           └── settings/
-│               └── settings_screen.dart
-└── functions/                      # Firebase Cloud Functions (TypeScript, gen 2)
-    ├── package.json
-    ├── tsconfig.json
-    └── src/
-        ├── index.ts                        # exports des Cloud Functions
-        ├── types.ts
-        ├── config/
-        │   └── defaultSources.ts           # miroir de default_sources.dart, seedé en base
-        ├── collectors/
-        │   ├── rssCollector.ts              # flux RSS officiels (/feed, /rss)
-        │   └── googleNewsFallback.ts        # Google News RSS filtré par domaine (sources sans flux)
-        ├── classification/
-        │   └── claudeClassifier.ts          # appel API Claude : angle + résumé + fiabilité
-        ├── dedup/
-        │   └── deduplicate.ts               # regroupement des articles d'un même évènement
-        ├── digest/
-        │   └── buildDigest.ts               # construction du digest quotidien/hebdo
-        ├── notifications/
-        │   └── sendDigestNotification.ts    # FCM à la création d'un digest
-        ├── scripts/
-        │   └── seedSources.ts               # callable d'amorçage de la collection `sources`
-        └── utils/
-            ├── robots.ts                    # vérification robots.txt avant tout fetch direct
-            └── textSimilarity.ts            # similarité de titres pour le dédoublonnage
+lib/
+├── main.dart                          # Provider tree + MaterialApp -> LibraryScreen
+├── theme/app_theme.dart
+├── utils/relative_time.dart           # "il y a 2 h", "hier"...
+├── models/
+│   ├── folder.dart
+│   ├── feed.dart
+│   ├── article.dart                   # Article + ArticleDraft (avant insertion en base)
+│   └── article_query.dart             # Sélection affichée par ArticleListScreen
+├── db/
+│   ├── app_database.dart              # Ouverture/schéma SQLite (sqflite)
+│   └── feed_repository.dart           # CRUD dossiers/flux/articles
+├── services/
+│   ├── feed_parser.dart               # Parsing RSS/Atom (dart_rss) + date RFC 822 + nettoyage HTML
+│   ├── feed_discovery_service.dart    # Résout une adresse (site ou flux) en flux exploitable
+│   └── feed_sync_service.dart         # Récupère + enregistre les nouveaux articles d'un ou tous les flux
+├── config/
+│   └── curated_sources.dart           # Sélection de départ (presse BF, institutions, régional, international)
+├── providers/
+│   └── library_provider.dart          # État de la bibliothèque (dossiers/flux, compteurs, actions)
+├── widgets/
+│   └── article_tile.dart
+└── screens/
+    ├── library/
+    │   ├── library_screen.dart        # Accueil : Tous / Favoris / dossiers / flux
+    │   └── feed_form_screen.dart      # Ajout (résolution d'URL) / modification d'un flux
+    ├── articles/
+    │   ├── article_list_screen.dart   # Liste pour une sélection (tout/dossier/flux/favoris)
+    │   └── article_detail_screen.dart
+    └── search/
+        └── search_screen.dart         # Recherche locale (déjà téléchargé)
 ```
 
-## 2. Schéma Firestore
+## 3. Schéma SQLite (`feed_repository.dart` / `app_database.dart`)
 
-### `sources/{sourceId}`
-Gérée en CRUD complet (ajout/modification/suppression/activation) depuis l'écran
-Réglages ; source de vérité pour la collecte.
+### `folders`
 | Champ | Type | Description |
 |---|---|---|
-| nom | string | Nom affiché (ex. « L'Économiste du Faso ») |
-| url | string | Site de la source (peut être vide pour une source « à confirmer ») |
-| acces | `gratuit` \| `gratuit_partiel` \| `payant` | Si `payant`, on ne stocke jamais que titre + lien |
-| onglets | string[] | Onglets couverts (ids parmi les 5 angles, ou `transverse` pour les 5) — informatif : le classement réel se fait par article, via Claude |
-| actif | bool | Source incluse ou non dans la prochaine collecte |
-| fluxRss | string \| null (optionnel) | Flux RSS officiel connu, non exposé dans l'UI ; absent → repli Google News RSS sur le domaine extrait de `url` |
+| id | TEXT PK | |
+| nom | TEXT | |
+| ordre | INTEGER | |
 
-### `articles/{articleId}`
+### `feeds`
 | Champ | Type | Description |
 |---|---|---|
-| titre | string | |
-| source | string | Nom de la source |
-| sourceId | string | Référence `sources/{sourceId}` |
-| url | string | Lien vers l'article original |
-| datePublication | Timestamp | |
-| dateCollecte | Timestamp | |
-| angleThematique | `investissement` \| `exportations` \| `monnaie_aes` \| `finances_publiques` \| `secteur_prive` \| `hors_sujet` | Déterminé par Claude |
-| resume | string \| null | 2-3 phrases générées par IA ; `null` si source payante |
-| langueOriginale | `fr` \| `en` | |
-| fiabilite | `haute` \| `moyenne` \| `faible` | Priorité d'affichage |
-| accesPayant | bool | |
-| eventGroupId | string \| null | Regroupe les articles couvrant le même évènement |
+| id | TEXT PK | |
+| nom | TEXT | |
+| site_url | TEXT | Adresse du site (pour référence) |
+| flux_url | TEXT | URL du flux RSS/Atom réellement interrogé |
+| folder_id | TEXT NULL | `NULL` = non classé ; `ON DELETE SET NULL` |
+| acces_limite | INTEGER (bool) | Indicatif seulement (site payant) |
+| ordre | INTEGER | |
+| derniere_maj | INTEGER NULL | Timestamp de la dernière collecte réussie |
+| derniere_erreur | TEXT NULL | Dernier message d'erreur, affiché dans la bibliothèque |
 
-Index composites : (`angleThematique` asc, `datePublication` desc), (`eventGroupId` asc, `datePublication` desc).
-
-### `digests/{digestId}` (id = `YYYY-MM-DD`)
+### `articles`
 | Champ | Type | Description |
 |---|---|---|
-| date | Timestamp | |
-| frequence | `quotidien` \| `hebdomadaire` | |
-| articlesParAngle | Map<angle, string[]> | IDs d'articles, triés par importance |
-| syntheseGlobale | string[] | IDs des articles les plus importants tous angles confondus |
-| genereA | Timestamp | |
+| id | TEXT PK | `feedId::hash(guid)` — dédoublonne automatiquement |
+| feed_id | TEXT | `ON DELETE CASCADE` |
+| titre, lien, contenu | TEXT | `contenu` = extrait nettoyé (HTML retiré, paragraphes conservés) |
+| date_publication | INTEGER | Fournie par le flux (RFC 822 ou ISO 8601) |
+| date_ajout | INTEGER | Date de récupération par l'app |
+| lu, favori | INTEGER (bool) | |
 
-### `config/collecte` (document singleton)
-| Champ | Type | Description |
-|---|---|---|
-| frequence | `quotidien` \| `hebdomadaire` | Défaut : `quotidien` |
-| heureCollecte | string | Défaut : `"06:00"` (Africa/Ouagadougou) |
-| notificationsActives | bool | Défaut : `true` |
-| langueResumes | `fr` \| `en` | Défaut : `fr` |
+Index sur `feed_id`, `date_publication`, `favori`, `folder_id`.
 
-## 3. Cloud Functions
+## 4. Récupération des flux (aucun serveur)
 
-| Fonction | Déclencheur | Rôle |
-|---|---|---|
-| `dailyPressReview` | Cloud Scheduler (`onSchedule`, 06:00 Africa/Ouagadougou, tous les jours — vérifie en interne si la fréquence configurée est hebdomadaire et si le jour correspond) | Orchestre : collecte RSS/Google News → classification+résumé Claude → dédoublonnage → écriture `articles` → construction du digest du jour → écriture `digests/{date}` |
-| `onDigestCreated` | Firestore trigger `onDocumentCreated('digests/{id}')` | Envoie la notification FCM « Votre revue de presse économique est prête » |
-| `manualRefresh` | HTTPS Callable | Relance `dailyPressReview` à la demande (bouton « Actualiser maintenant » dans Réglages) |
-| `seedSources` | HTTPS Callable (admin, à usage unique) | Amorce la collection `sources` avec la liste de départ |
+`FeedDiscoveryService.discover(url)` :
+1. Essaie l'adresse telle quelle comme flux (`RssFeed.parse` puis `AtomFeed.parse` — l'un des deux lève une exception explicite si le contenu n'est pas le sien, ce qui permet une détection fiable).
+2. Sinon, télécharge la page et cherche `<link rel="alternate" type=".../rss+xml|atom+xml">`.
+3. Sinon, essaie des chemins usuels : `/feed`, `/rss`, `/rss.xml`, `/atom.xml`, `/feeds/posts/default` (Blogger), `/spip.php?page=backend` (SPIP, utilisé par plusieurs sites ouest-africains).
 
-Contraintes respectées : flux RSS officiels en priorité, repli Google News RSS filtré par domaine (jamais de parsing HTML direct de sites tiers), vérification de `robots.txt` avant tout fetch, aucun stockage de contenu intégral (titre + source + date + lien + résumé 2-3 phrases IA uniquement), sources payantes limitées à titre + lien.
+`FeedSyncService.syncFeed(feed)` télécharge le flux connu, parse, et insère
+les nouveaux articles (les doublons sont ignorés via l'id stable
+`feedId::guid`). Utilisé par le glisser-actualiser et par le bouton
+« Actualiser » de chaque écran.
 
-## 4. Navigation Flutter
+Le parsing de dates RSS (`parseRfc822Date`) est un parseur maison : ni
+`DateTime.tryParse` (ISO 8601 seulement) ni `HttpDate.parse` de `dart:io`
+(rejette les offsets numériques comme `+0000`) ne couvrent le format RFC 822
+réel des flux RSS — validé empiriquement avant intégration.
 
-- `BottomNavigationBar` à **5 onglets fixes** (Investissement, Exportations, Monnaie & AES, Finances publiques, Secteur privé) — non négociables.
-- `AppBar` commune avec actions : icône recherche (plein texte, contextualisée à l'onglet actif), icône « Digest du jour », menu (Historique des digests, Réglages).
-- Écran Réglages : fréquence de collecte, gestion des sources (activer/désactiver, ajouter), notifications on/off, bouton actualisation manuelle.
+## 5. Navigation
 
----
+- **Accueil (`LibraryScreen`)** : « Tous les articles », « Favoris », puis
+  chaque dossier (dépliable) avec ses flux, compteurs nombre non lus, menu
+  « Importer une sélection de sources ». Bouton **+** pour ajouter un
+  journal/magazine par son adresse.
+- **Liste d'articles** : glisser pour actualiser, filtre non-lus, tout
+  marquer comme lu.
+- **Détail d'un article** : extrait fourni par le flux, favori, partage,
+  marquer non lu, lien vers l'article complet sur le site d'origine.
+- **Recherche** : filtre local sur les articles déjà téléchargés (titre,
+  extrait, nom du flux).
 
-Ce plan sert de base validée pour l'implémentation qui suit dans ce même commit (scaffold complet Flutter + Cloud Functions).
+## 6. CI / génération de l'APK
+
+Le SDK Flutter n'est pas disponible dans l'environnement qui a produit ce
+dépôt (accès réseau restreint à certains domaines). `.github/workflows/build-apk.yml`
+génère les dossiers de plateforme Android à la volée (`flutter create`),
+applique l'icône et le nom de l'app, construit l'APK et publie une
+GitHub Release — le tout sur les runners GitHub, qui n'ont pas cette
+restriction.
