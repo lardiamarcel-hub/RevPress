@@ -1,0 +1,92 @@
+name: Build APK (Suivi Ferme)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.24.5'
+          channel: 'stable'
+
+      # Le SDK Flutter n'est pas disponible dans l'environnement qui a généré
+      # ce dépôt : les dossiers de plateforme (android/, ...) sont générés
+      # ici, à la volée, à chaque build.
+      - name: Générer les dossiers de plateforme
+        working-directory: ferme
+        run: flutter create --platforms=android --org bf.cci.suivi.ferme --project-name suivi_ferme .
+
+      - name: Retirer le test généré par défaut (ne correspond pas à cette app)
+        run: rm -f ferme/test/widget_test.dart
+
+      - name: Renommer l'application affichée sur le téléphone
+        run: |
+          sed -i 's/android:label="suivi_ferme"/android:label="Suivi Ferme"/' ferme/android/app/src/main/AndroidManifest.xml
+          grep -q 'android:label="Suivi Ferme"' ferme/android/app/src/main/AndroidManifest.xml || { echo "::error::app label patch failed"; cat ferme/android/app/src/main/AndroidManifest.xml; exit 1; }
+
+      - name: Ajouter la permission INTERNET (filet de sécurité, en plus de celle des plugins Firebase)
+        run: |
+          sed -i '/<manifest xmlns:android=/a\    <uses-permission android:name="android.permission.INTERNET"/>' ferme/android/app/src/main/AndroidManifest.xml
+          grep -q 'android.permission.INTERNET' ferme/android/app/src/main/AndroidManifest.xml || { echo "::error::INTERNET permission patch failed"; cat ferme/android/app/src/main/AndroidManifest.xml; exit 1; }
+
+      # Firebase (Firestore + Authentication) : nécessite google-services.json
+      # (projet Firebase du propriétaire de la ferme) et le plugin Gradle
+      # "Google services", absents d'un `flutter create` standard.
+      - name: Installer google-services.json depuis le secret du dépôt
+        env:
+          GOOGLE_SERVICES_JSON_B64: ${{ secrets.FERME_GOOGLE_SERVICES_JSON }}
+        run: |
+          if [ -z "$GOOGLE_SERVICES_JSON_B64" ]; then
+            echo "::error::Le secret FERME_GOOGLE_SERVICES_JSON est manquant. Voir ferme/README.md pour la procédure de configuration Firebase."
+            exit 1
+          fi
+          echo "$GOOGLE_SERVICES_JSON_B64" | base64 -d > ferme/android/app/google-services.json
+
+      - name: Déclarer le plugin Gradle "Google services"
+        run: |
+          sed -i '/id "org.jetbrains.kotlin.android"/a\    id "com.google.gms.google-services" version "4.4.2" apply false' ferme/android/settings.gradle
+          grep -q 'com.google.gms.google-services' ferme/android/settings.gradle || { echo "::error::settings.gradle patch failed"; cat ferme/android/settings.gradle; exit 1; }
+          sed -i '0,/^plugins {/s//plugins {\n    id "com.google.gms.google-services"/' ferme/android/app/build.gradle
+          grep -q 'com.google.gms.google-services' ferme/android/app/build.gradle || { echo "::error::app/build.gradle patch failed"; cat ferme/android/app/build.gradle; exit 1; }
+
+      - name: Installer les dépendances
+        working-directory: ferme
+        run: flutter pub get
+
+      - name: Générer l'icône de l'application
+        working-directory: ferme
+        run: dart run flutter_launcher_icons
+
+      - name: Analyser le code
+        working-directory: ferme
+        run: flutter analyze --no-fatal-infos --no-fatal-warnings
+
+      - name: Construire l'APK (release)
+        working-directory: ferme
+        run: flutter build apk --release
+
+      - name: Renommer l'APK
+        run: cp ferme/build/app/outputs/flutter-apk/app-release.apk suivi-ferme.apk
+
+      - name: Publier la Release GitHub
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ferme-apk-${{ github.run_number }}
+          name: "Suivi Ferme — build ${{ github.run_number }}"
+          body: |
+            APK généré automatiquement par GitHub Actions à partir de la branche `${{ github.ref_name }}`.
+
+            Installation : téléchargez `suivi-ferme.apk` sur votre téléphone Android, puis ouvrez le
+            fichier (autorisez « Installer des applications inconnues » si Android le demande).
+
+            Un compte doit être créé dans l'app avec Firebase Authentication — voir ferme/README.md
+            pour la configuration initiale (premier compte = Promoteur, puis invitations).
+          files: suivi-ferme.apk

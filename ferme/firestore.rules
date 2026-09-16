@@ -1,0 +1,142 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function estConnecte() {
+      return request.auth != null;
+    }
+
+    function profilExiste() {
+      return exists(/databases/$(database)/documents/utilisateurs/$(request.auth.uid));
+    }
+
+    function profil() {
+      return get(/databases/$(database)/documents/utilisateurs/$(request.auth.uid)).data;
+    }
+
+    function estActif() {
+      return estConnecte() && profilExiste() && profil().actif == true;
+    }
+
+    function role() {
+      return profil().role;
+    }
+
+    function estPromoteur() {
+      return estActif() && role() == 'promoteur';
+    }
+
+    function estSuperviseur() {
+      return estActif() && role() == 'superviseur';
+    }
+
+    function estCollaborateur() {
+      return estActif() && role() == 'collaborateur';
+    }
+
+    // ---------------------------------------------------------------
+    // Amorçage : le tout premier compte inscrit devient Promoteur.
+    // meta/bootstrap ne peut basculer que false -> true, une seule fois.
+    // ---------------------------------------------------------------
+    match /meta/bootstrap {
+      allow get: if estConnecte();
+      allow create: if estConnecte() && request.resource.data.promoteur_defini == false;
+      allow update: if estConnecte()
+        && resource.data.promoteur_defini == false
+        && request.resource.data.promoteur_defini == true;
+    }
+
+    // ---------------------------------------------------------------
+    // Profils utilisateurs
+    // ---------------------------------------------------------------
+    match /utilisateurs/{uid} {
+      allow get: if estConnecte() && (request.auth.uid == uid || estPromoteur());
+      allow list: if estPromoteur();
+
+      // (1) Amorçage : premier compte -> Promoteur, verrouillé par meta/bootstrap.
+      allow create: if request.auth.uid == uid
+        && request.resource.data.role == 'promoteur'
+        && request.resource.data.actif == true
+        && get(/databases/$(database)/documents/meta/bootstrap).data.promoteur_defini == false;
+
+      // (2) Inscription normale : nécessite une invitation valide, non
+      // utilisée, correspondant exactement au nom/rôle proposés.
+      allow create: if request.auth.uid == uid
+        && request.resource.data.actif == true
+        && request.auth.token.email != null
+        && exists(/databases/$(database)/documents/invitations/$(request.auth.token.email))
+        && get(/databases/$(database)/documents/invitations/$(request.auth.token.email)).data.utilise == false
+        && get(/databases/$(database)/documents/invitations/$(request.auth.token.email)).data.role == request.resource.data.role
+        && get(/databases/$(database)/documents/invitations/$(request.auth.token.email)).data.nom == request.resource.data.nom;
+
+      // Seul le Promoteur (dés)active un compte ou change son rôle.
+      allow update: if estPromoteur();
+      allow delete: if false;
+    }
+
+    // ---------------------------------------------------------------
+    // Invitations : créées par le Promoteur, acceptées par l'invité(e).
+    // ---------------------------------------------------------------
+    match /invitations/{email} {
+      allow get: if estConnecte() && request.auth.token.email == email;
+      allow list: if estPromoteur();
+      allow create: if estPromoteur() && request.resource.data.utilise == false;
+
+      // L'invité(e) marque sa propre invitation "utilisée", une seule fois,
+      // sans pouvoir changer le rôle/nom que le Promoteur lui a attribués.
+      allow update: if estConnecte()
+        && request.auth.token.email == email
+        && resource.data.utilise == false
+        && request.resource.data.utilise == true
+        && request.resource.data.role == resource.data.role
+        && request.resource.data.nom == resource.data.nom;
+      allow update: if estPromoteur();
+      allow delete: if estPromoteur();
+    }
+
+    // ---------------------------------------------------------------
+    // Lignes de dépense (catégories) : lues par tous les actifs, gérées
+    // par le Superviseur.
+    // ---------------------------------------------------------------
+    match /config/lignes {
+      allow get: if estActif();
+      allow write: if estSuperviseur();
+    }
+
+    // ---------------------------------------------------------------
+    // Dépenses
+    // ---------------------------------------------------------------
+    match /depenses/{id} {
+      // Promoteur/Superviseur : vue complète. Collaborateur : uniquement
+      // ses propres imputations (la requête cliente doit filtrer sur
+      // saisi_par_uid == uid, sans quoi la liste est refusée).
+      allow read: if estPromoteur()
+        || estSuperviseur()
+        || (estCollaborateur() && resource.data.saisi_par_uid == request.auth.uid);
+
+      allow create: if (estSuperviseur() || estCollaborateur())
+        && request.resource.data.saisi_par_uid == request.auth.uid
+        && request.resource.data.saisi_par_role == role()
+        && request.resource.data.montant is number
+        && request.resource.data.montant > 0;
+
+      allow update, delete: if estSuperviseur();
+      allow update, delete: if estCollaborateur() && resource.data.saisi_par_uid == request.auth.uid;
+    }
+
+    // ---------------------------------------------------------------
+    // Recettes : jamais visibles ni modifiables par un Collaborateur.
+    // ---------------------------------------------------------------
+    match /recettes/{id} {
+      allow read: if estPromoteur() || estSuperviseur();
+
+      allow create: if estSuperviseur()
+        && request.resource.data.saisi_par_uid == request.auth.uid
+        && request.resource.data.montant is number
+        && request.resource.data.montant > 0;
+
+      allow update, delete: if estSuperviseur();
+    }
+  }
+}

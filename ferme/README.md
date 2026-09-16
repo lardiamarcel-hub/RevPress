@@ -1,0 +1,87 @@
+# Suivi Ferme
+
+Application mobile Android pour gérer à distance les finances d'une
+exploitation agricole : dépenses, recettes, bilan, avec trois rôles
+(Promoteur, Superviseur, Collaborateur) — voir
+[ARCHITECTURE.md](ARCHITECTURE.md) pour le détail technique et
+[CAHIER_DES_CHARGES.md](CAHIER_DES_CHARGES.md) pour le contexte d'origine.
+
+## Stack
+
+- **Frontend** : Flutter
+- **Backend** : Firebase (Firestore + Firebase Authentication)
+- **Build** : APK généré via GitHub Actions (`.github/workflows/build-apk-ferme.yml`)
+
+## Rôles
+
+| Rôle | Qui | Permissions |
+|---|---|---|
+| **Promoteur** | Propriétaire de la ferme | Lecture complète (Suivi, Bilan) ; gestion des accès ; ne saisit pas |
+| **Superviseur** | En charge de la supervision financière | Lecture + écriture complètes (dépenses, recettes, lignes) |
+| **Collaborateur** | Fermier / technicien (optionnel) | Imputer une dépense uniquement ; ne voit ni les recettes ni le bilan |
+
+## Configuration Firebase (obligatoire avant le premier build)
+
+1. Créez un projet sur la [console Firebase](https://console.firebase.google.com).
+2. Activez **Authentication → Email/Password**.
+3. Activez **Firestore Database** (mode production).
+4. Déployez les règles de sécurité fournies (`firestore.rules`) et les
+   index (`firestore.indexes.json`) — avec la
+   [CLI Firebase](https://firebase.google.com/docs/cli) :
+   ```bash
+   cd ferme
+   firebase deploy --only firestore:rules,firestore:indexes
+   ```
+5. Ajoutez une application Android au projet Firebase (package
+   `bf.cci.suivi.ferme`, celui généré par le workflow CI), téléchargez le
+   fichier `google-services.json` fourni par Firebase.
+6. Encodez-le en base64 et enregistrez-le comme secret du dépôt GitHub sous
+   le nom **`FERME_GOOGLE_SERVICES_JSON`** :
+   ```bash
+   base64 -w0 google-services.json   # macOS : base64 -i google-services.json
+   ```
+   (Réglages du dépôt → Secrets and variables → Actions → New repository secret)
+
+Sans ce secret, le workflow `build-apk-ferme.yml` échoue volontairement
+avec un message explicite plutôt que de produire un APK non fonctionnel.
+
+## Premier lancement (amorçage du compte Promoteur)
+
+Il n'y a pas de compte pré-créé : la toute première personne qui s'inscrit
+dans l'application (bouton « Créer un compte » sur l'écran de connexion)
+se voit proposer de devenir le **Promoteur** de la ferme. Ce mécanisme est
+verrouillé côté serveur (`firestore.rules`) pour n'être utilisable qu'une
+seule fois.
+
+Ensuite, le Promoteur invite les autres comptes depuis l'écran
+**Gestion des accès** (nom, e-mail, rôle Superviseur ou Collaborateur). La
+personne invitée doit alors créer son propre compte dans l'app avec cette
+même adresse e-mail : l'invitation détermine automatiquement son rôle, elle
+ne peut pas se l'attribuer elle-même.
+
+## Mise en route (développement local)
+
+```bash
+cd ferme
+flutter create . --platforms=android   # génère android/, etc. (absent du dépôt)
+# placez google-services.json téléchargé depuis Firebase dans android/app/
+flutter pub get
+flutter run
+```
+
+## Construire l'APK
+
+Le workflow `.github/workflows/build-apk-ferme.yml` (déclenchement manuel,
+`workflow_dispatch`) génère les dossiers Android, installe
+`google-services.json` depuis le secret `FERME_GOOGLE_SERVICES_JSON`,
+construit l'APK et le publie comme
+[GitHub Release](../../../releases).
+
+## Limite connue
+
+Les « notifications optionnelles à chaque nouvelle saisie » du cahier des
+charges nécessiteraient un déclencheur serveur (Cloud Functions + FCM), hors
+du périmètre actuel (Firestore + Authentication uniquement, sans Cloud
+Functions). En l'état, la mise à jour en temps réel de l'écran Suivi
+(listeners Firestore) tient lieu de notification tant que l'app est
+ouverte ; une notification push app fermée reste une extension possible.

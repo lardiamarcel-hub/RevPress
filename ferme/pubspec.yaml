@@ -1,0 +1,46 @@
+name: suivi_ferme
+description: "Suivi financier à distance d'une exploitation agricole — dépenses, recettes, bilan, accès par rôle (Promoteur, Superviseur, Collaborateur)."
+publish_to: "none"
+version: 0.1.0
+
+environment:
+  sdk: ">=3.4.0 <4.0.0"
+  flutter: ">=3.24.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+
+  # Backend (Firestore + Authentication)
+  firebase_core: ^3.6.0
+  firebase_auth: ^5.3.1
+  cloud_firestore: ^5.4.4
+
+  # State management
+  provider: ^6.1.2
+
+  # Bilan : graphique de répartition et export (PDF + partage natif)
+  fl_chart: ^0.69.0
+  pdf: ^3.11.1
+  printing: ^5.13.3
+
+  # Utilitaires
+  intl: ^0.19.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+  flutter_launcher_icons: ^0.14.1
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/icon/icon.png
+
+flutter_launcher_icons:
+  android: true
+  ios: false
+  image_path: "assets/icon/icon.png"
+  min_sdk_android: 21

@@ -22,8 +22,16 @@ chercher les articles directement, sans intermédiaire.
 
 ## Structure du dépôt
 
-- `mobile/` — application Flutter (Android)
-- `.github/workflows/build-apk.yml` — construit l'APK et publie une release GitHub
+Ce dépôt héberge deux applications Flutter indépendantes :
+
+- `mobile/` — **Revue Éco BF**, lecteur de flux RSS (voir ci-dessous)
+- `ferme/` — **Suivi Ferme**, suivi financier à distance d'une exploitation
+  agricole (Firebase Firestore + Authentication, rôles Promoteur /
+  Superviseur / Collaborateur) — voir [ferme/README.md](ferme/README.md)
+- `.github/workflows/build-apk.yml` — construit l'APK de Revue Éco BF
+- `.github/workflows/build-apk-ferme.yml` — construit l'APK de Suivi Ferme
+
+Le reste de ce README concerne uniquement **Revue Éco BF** (`mobile/`).
 
 ## Prérequis
 
