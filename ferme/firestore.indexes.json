@@ -1,0 +1,21 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "depenses",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "saisi_par_uid", "order": "ASCENDING" },
+        { "fieldPath": "date", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "recettes",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "saisi_par_uid", "order": "ASCENDING" },
+        { "fieldPath": "date", "order": "DESCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}

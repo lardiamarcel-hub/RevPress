@@ -14,10 +14,26 @@ mobile/windows/
 mobile/web/
 mobile/*.iml
 
+ferme/.dart_tool/
+ferme/.flutter-plugins
+ferme/.flutter-plugins-dependencies
+ferme/.packages
+ferme/.pub-cache/
+ferme/.pub/
+ferme/build/
+ferme/android/
+ferme/ios/
+ferme/linux/
+ferme/macos/
+ferme/windows/
+ferme/web/
+ferme/*.iml
+
 # Secrets
 *.env
 .env.*
 serviceAccountKey.json
+google-services.json
 
 # Editors / OS
 .vscode/
