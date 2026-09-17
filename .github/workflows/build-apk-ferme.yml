@@ -20,16 +20,21 @@ jobs:
       # Le SDK Flutter n'est pas disponible dans l'environnement qui a généré
       # ce dépôt : les dossiers de plateforme (android/, ...) sont générés
       # ici, à la volée, à chaque build.
+      # --org + --project-name se concatènent pour former l'applicationId
+      # Android (bf.cci.suivi + ferme = bf.cci.suivi.ferme) : ceci doit rester
+      # identique au nom de package déclaré dans le projet Firebase, sans quoi
+      # google-services.json ne correspond à aucune app ("No matching client
+      # found for package name").
       - name: Générer les dossiers de plateforme
         working-directory: ferme
-        run: flutter create --platforms=android --org bf.cci.suivi.ferme --project-name suivi_ferme .
+        run: flutter create --platforms=android --org bf.cci.suivi --project-name ferme .
 
       - name: Retirer le test généré par défaut (ne correspond pas à cette app)
         run: rm -f ferme/test/widget_test.dart
 
       - name: Renommer l'application affichée sur le téléphone
         run: |
-          sed -i 's/android:label="suivi_ferme"/android:label="Suivi Ferme"/' ferme/android/app/src/main/AndroidManifest.xml
+          sed -i 's/android:label="ferme"/android:label="Suivi Ferme"/' ferme/android/app/src/main/AndroidManifest.xml
           grep -q 'android:label="Suivi Ferme"' ferme/android/app/src/main/AndroidManifest.xml || { echo "::error::app label patch failed"; cat ferme/android/app/src/main/AndroidManifest.xml; exit 1; }
 
       - name: Ajouter la permission INTERNET (filet de sécurité, en plus de celle des plugins Firebase)

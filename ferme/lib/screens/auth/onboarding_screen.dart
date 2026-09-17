@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../providers/session_provider.dart';
-import '../../services/firestore_service.dart';
 
 /// Affiché quand un utilisateur est connecté mais n'a pas encore de profil
 /// Firestore : soit il est le tout premier compte (devient Promoteur), soit
