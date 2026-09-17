@@ -39,7 +39,10 @@ class _LoginScreenState extends State<LoginScreen> {
       } else {
         await auth.connexion(_emailCtrl.text, _motDePasseCtrl.text);
       }
-      // La navigation suit automatiquement via SessionProvider (AppGate).
+      // Cet écran est ouvert par un Navigator.push depuis l'accueil : une fois
+      // connecté, on le referme pour révéler AppGate (qui affiche désormais
+      // l'onboarding ou l'app selon le rôle).
+      if (mounted) Navigator.of(context).pop();
     } catch (e) {
       setState(() => _erreur = _messageErreur(e));
     } finally {
@@ -61,12 +64,25 @@ class _LoginScreenState extends State<LoginScreen> {
     if (texte.contains('invalid-email')) {
       return 'Adresse e-mail invalide.';
     }
-    return "Une erreur est survenue. Vérifiez votre connexion et réessayez.";
+    if (texte.contains('operation-not-allowed')) {
+      return "La connexion par e-mail/mot de passe n'est pas activée sur le "
+          'projet Firebase (Authentication → Sign-in method → Email/Password).';
+    }
+    if (texte.contains('network-request-failed')) {
+      return 'Pas de connexion internet. Vérifiez votre réseau et réessayez.';
+    }
+    if (texte.contains('too-many-requests')) {
+      return 'Trop de tentatives. Patientez quelques minutes puis réessayez.';
+    }
+    // Cause non reconnue : on affiche le détail brut plutôt qu'un message
+    // vague, pour pouvoir diagnostiquer sans capture d'écran.
+    return 'Erreur : $texte';
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: AppBar(title: const Text('Connexion')),
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(

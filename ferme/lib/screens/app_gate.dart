@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../providers/session_provider.dart';
-import 'auth/login_screen.dart';
 import 'auth/onboarding_screen.dart';
 import 'home/home_shell.dart';
+import 'landing/landing_screen.dart';
 
 /// Route vers l'écran adapté à l'état de connexion / profil de l'utilisateur.
 class AppGate extends StatelessWidget {
@@ -18,7 +18,7 @@ class AppGate extends StatelessWidget {
       case SessionStatus.chargement:
         return const Scaffold(body: Center(child: CircularProgressIndicator()));
       case SessionStatus.deconnecte:
-        return const LoginScreen();
+        return const LandingScreen();
       case SessionStatus.enAttenteProfil:
         return const OnboardingScreen();
       case SessionStatus.compteDesactive:
