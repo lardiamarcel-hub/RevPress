@@ -21,5 +21,10 @@ class AuthService {
     );
   }
 
+  /// Mode démonstration : essayer l'application sans créer de compte réel.
+  /// À désactiver côté Firebase (Authentication → Sign-in method →
+  /// Anonymous) une fois la ferme passée en usage réel.
+  Future<void> connexionAnonyme() => _auth.signInAnonymously();
+
   Future<void> deconnexion() => _auth.signOut();
 }

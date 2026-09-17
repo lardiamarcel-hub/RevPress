@@ -59,6 +59,24 @@ personne invitée doit alors créer son propre compte dans l'app avec cette
 même adresse e-mail : l'invitation détermine automatiquement son rôle, elle
 ne peut pas se l'attribuer elle-même.
 
+## Mode démonstration (essai sans compte)
+
+L'écran de connexion propose un bouton « Essayer sans compte » qui crée un
+compte Firebase Auth anonyme (aucun e-mail requis) pour découvrir l'app
+rapidement. Il suit le même amorçage que n'importe quel compte (devient
+Promoteur si aucun ne l'est encore), mais consomme donc l'unique jeton
+d'amorçage `meta/bootstrap` s'il est utilisé en premier.
+
+Avant de passer à un usage réel avec la ferme :
+- Activez **Authentication → Sign-in method → Anonymous** dans la console
+  Firebase pour rendre ce bouton fonctionnel pendant la phase d'essai.
+- Une fois prêt·e, **désactivez ce même fournisseur Anonymous** pour forcer
+  une vraie adresse e-mail à chaque nouvelle inscription.
+- Si un compte anonyme est devenu Promoteur pendant les essais, supprimez-le
+  (Authentication → onglet Users) ainsi que son document `utilisateurs/{uid}`
+  et repassez `meta/bootstrap.promoteur_defini` à `false` dans Firestore,
+  pour permettre au vrai Promoteur de s'amorcer proprement.
+
 ## Mise en route (développement local)
 
 ```bash
