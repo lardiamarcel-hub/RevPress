@@ -42,6 +42,14 @@ jobs:
           sed -i '/<manifest xmlns:android=/a\    <uses-permission android:name="android.permission.INTERNET"/>' ferme/android/app/src/main/AndroidManifest.xml
           grep -q 'android.permission.INTERNET' ferme/android/app/src/main/AndroidManifest.xml || { echo "::error::INTERNET permission patch failed"; cat ferme/android/app/src/main/AndroidManifest.xml; exit 1; }
 
+      # firebase_auth (com.google.firebase:firebase-auth) exige minSdk 23 ;
+      # le minSdk par défaut de flutter create (flutter.minSdkVersion) est 21,
+      # ce qui fait échouer la fusion de manifeste Gradle.
+      - name: Relever minSdkVersion à 23 (requis par firebase_auth)
+        run: |
+          sed -i 's/minSdkVersion flutter.minSdkVersion/minSdkVersion 23/' ferme/android/app/build.gradle
+          grep -q 'minSdkVersion 23' ferme/android/app/build.gradle || { echo "::error::minSdkVersion patch failed"; cat ferme/android/app/build.gradle; exit 1; }
+
       # Firebase (Firestore + Authentication) : nécessite google-services.json
       # (projet Firebase du propriétaire de la ferme) et le plugin Gradle
       # "Google services", absents d'un `flutter create` standard.
