@@ -32,16 +32,19 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     final session = context.read<SessionProvider>();
     final firestore = session.firestore;
     final email = session.user?.email;
-    if (email == null) return;
 
     try {
-      final invitation = await firestore.chercherInvitation(email);
-      if (invitation != null) {
-        setState(() {
-          _invitation = invitation;
-          _etat = _EtatOnboarding.invitationTrouvee;
-        });
-        return;
+      // Un compte anonyme (mode démonstration) n'a pas d'e-mail : aucune
+      // invitation n'est possible pour lui, on passe direct à l'amorçage.
+      if (email != null) {
+        final invitation = await firestore.chercherInvitation(email);
+        if (invitation != null) {
+          setState(() {
+            _invitation = invitation;
+            _etat = _EtatOnboarding.invitationTrouvee;
+          });
+          return;
+        }
       }
 
       await firestore.assurerBootstrapExiste();
@@ -192,16 +195,22 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             const SizedBox(height: 16),
             Text('Aucun accès trouvé', style: Theme.of(context).textTheme.titleLarge),
             const SizedBox(height: 8),
-            const Text(
-              "Ce compte n'a pas d'invitation en attente. "
-              'Demandez au Promoteur de la ferme de vous inviter avec cette même adresse e-mail.',
+            Text(
+              session.user?.email == null
+                  ? "Un Promoteur existe déjà pour cette ferme : le mode démonstration "
+                      "(sans e-mail) ne peut pas rejoindre un accès existant. Créez un "
+                      "compte avec une vraie adresse e-mail pour être invité(e)."
+                  : "Ce compte n'a pas d'invitation en attente. "
+                      'Demandez au Promoteur de la ferme de vous inviter avec cette même adresse e-mail.',
               textAlign: TextAlign.center,
             ),
-            const SizedBox(height: 16),
-            Text(
-              session.user?.email ?? '',
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.bold),
-            ),
+            if (session.user?.email != null) ...[
+              const SizedBox(height: 16),
+              Text(
+                session.user!.email!,
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.bold),
+              ),
+            ],
             const SizedBox(height: 24),
             OutlinedButton(onPressed: session.deconnexion, child: const Text('Se déconnecter')),
           ],

@@ -50,6 +50,27 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
+  Future<void> _essayerAnonyme() async {
+    setState(() {
+      _enCours = true;
+      _erreur = null;
+    });
+    try {
+      await context.read<AuthService>().connexionAnonyme();
+      if (mounted) Navigator.of(context).pop();
+    } catch (e) {
+      final texte = e.toString();
+      setState(() {
+        _erreur = texte.contains('operation-not-allowed')
+            ? "Le mode démonstration n'est pas activé sur le projet Firebase "
+                '(Authentication → Sign-in method → Anonymous).'
+            : 'Erreur : $texte';
+      });
+    } finally {
+      if (mounted) setState(() => _enCours = false);
+    }
+  }
+
   String _messageErreur(Object e) {
     final texte = e.toString();
     if (texte.contains('user-not-found') || texte.contains('wrong-password') || texte.contains('invalid-credential')) {
@@ -157,6 +178,29 @@ class _LoginScreenState extends State<LoginScreen> {
                             ? 'Vous avez déjà un compte ? Se connecter'
                             : "Première connexion ou invité(e) ? Créer un compte",
                       ),
+                    ),
+                    const SizedBox(height: 16),
+                    const Row(
+                      children: [
+                        Expanded(child: Divider()),
+                        Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 8),
+                          child: Text('ou'),
+                        ),
+                        Expanded(child: Divider()),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    OutlinedButton(
+                      onPressed: _enCours ? null : _essayerAnonyme,
+                      child: const Text('Essayer sans compte (mode démonstration)'),
+                    ),
+                    const SizedBox(height: 4),
+                    const Text(
+                      "Pour découvrir l'app rapidement. Pour une utilisation réelle avec "
+                      'la ferme, créez un compte avec une vraie adresse e-mail.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(fontSize: 12, color: Colors.black54),
                     ),
                   ],
                 ),
