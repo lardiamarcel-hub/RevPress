@@ -77,6 +77,35 @@ Avant de passer à un usage réel avec la ferme :
   et repassez `meta/bootstrap.promoteur_defini` à `false` dans Firestore,
   pour permettre au vrai Promoteur de s'amorcer proprement.
 
+## Connexion Google
+
+En plus de l'e-mail/mot de passe, l'écran de connexion propose
+« Continuer avec Google ». Pour l'activer :
+
+1. **Authentication → Sign-in method → Google** → activer (un e-mail
+   d'assistance du projet est demandé).
+2. **Paramètres du projet (⚙️) → Général → vos applications** → l'app
+   Android `bf.cci.suivi.ferme` → section **Certificats SHA** → **Ajouter
+   une empreinte** → collez l'empreinte SHA-1 du certificat qui signe les
+   APK produits par la CI (voir ci-dessous pour l'obtenir).
+3. **Re-téléchargez `google-services.json`** (il doit maintenant contenir
+   un `oauth_client` non vide) et mettez à jour le secret GitHub
+   `FERME_GOOGLE_SERVICES_JSON` avec ce nouveau fichier encodé en base64.
+
+Les APK sont actuellement signés avec le keystore de debug par défaut de
+l'environnement CI (`signingConfig = signingConfigs.debug`, pratique pour
+les essais mais **à remplacer par un vrai keystore de release avant toute
+diffusion large** — voir la [documentation Flutter sur la signature
+d'app](https://docs.flutter.dev/deployment/android#signing-the-app)).
+Pour obtenir l'empreinte SHA-1 de ce certificat de debug à partir d'un APK
+déjà construit :
+
+```bash
+unzip -p suivi-ferme.apk META-INF/*.RSA > cert.rsa
+openssl pkcs7 -inform DER -in cert.rsa -print_certs -out cert.pem
+openssl x509 -in cert.pem -noout -fingerprint -sha1
+```
+
 ## Mise en route (développement local)
 
 ```bash
