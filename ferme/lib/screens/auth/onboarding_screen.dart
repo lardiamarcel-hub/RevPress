@@ -14,7 +14,7 @@ class OnboardingScreen extends StatefulWidget {
   State<OnboardingScreen> createState() => _OnboardingScreenState();
 }
 
-enum _EtatOnboarding { chargement, invitationTrouvee, bootstrapDisponible, aucunAcces, enCours, erreur }
+enum _EtatOnboarding { chargement, invitationTrouvee, bootstrapDisponible, aucunAcces, enCours, erreurChargement }
 
 class _OnboardingScreenState extends State<OnboardingScreen> {
   _EtatOnboarding _etat = _EtatOnboarding.chargement;
@@ -28,25 +28,36 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   }
 
   Future<void> _analyser() async {
+    setState(() => _etat = _EtatOnboarding.chargement);
     final session = context.read<SessionProvider>();
     final firestore = session.firestore;
     final email = session.user?.email;
     if (email == null) return;
 
-    final invitation = await firestore.chercherInvitation(email);
-    if (invitation != null) {
-      setState(() {
-        _invitation = invitation;
-        _etat = _EtatOnboarding.invitationTrouvee;
-      });
-      return;
-    }
+    try {
+      final invitation = await firestore.chercherInvitation(email);
+      if (invitation != null) {
+        setState(() {
+          _invitation = invitation;
+          _etat = _EtatOnboarding.invitationTrouvee;
+        });
+        return;
+      }
 
-    await firestore.assurerBootstrapExiste();
-    final dejaDefini = await firestore.promoteurDejaDefini();
-    setState(() {
-      _etat = dejaDefini ? _EtatOnboarding.aucunAcces : _EtatOnboarding.bootstrapDisponible;
-    });
+      await firestore.assurerBootstrapExiste();
+      final dejaDefini = await firestore.promoteurDejaDefini();
+      setState(() {
+        _etat = dejaDefini ? _EtatOnboarding.aucunAcces : _EtatOnboarding.bootstrapDisponible;
+      });
+    } catch (e) {
+      setState(() {
+        _erreur = "Impossible de joindre Firestore : $e\n\n"
+            "Vérifiez que la base Firestore est créée et que les règles de "
+            "sécurité (firestore.rules) ont bien été publiées dans la "
+            "console Firebase.";
+        _etat = _EtatOnboarding.erreurChargement;
+      });
+    }
   }
 
   Future<void> _accepterInvitation() async {
@@ -196,8 +207,21 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           ],
         );
 
-      case _EtatOnboarding.erreur:
-        return Text(_erreur ?? 'Erreur inconnue');
+      case _EtatOnboarding.erreurChargement:
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.cloud_off, size: 48, color: Theme.of(context).colorScheme.error),
+            const SizedBox(height: 16),
+            Text('Connexion à Firestore impossible', style: Theme.of(context).textTheme.titleLarge),
+            const SizedBox(height: 8),
+            Text(_erreur ?? 'Erreur inconnue', textAlign: TextAlign.center),
+            const SizedBox(height: 24),
+            FilledButton(onPressed: _analyser, child: const Text('Réessayer')),
+            const SizedBox(height: 8),
+            OutlinedButton(onPressed: session.deconnexion, child: const Text('Se déconnecter')),
+          ],
+        );
     }
   }
 }
