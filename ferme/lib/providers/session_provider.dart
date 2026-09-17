@@ -16,6 +16,9 @@ enum SessionStatus {
   // Connecté avec profil, mais désactivé par le Promoteur.
   compteDesactive,
   pret,
+  // Connecté, mais impossible de lire le profil Firestore (règles non
+  // publiées, base inaccessible, pas de réseau...).
+  erreurProfil,
 }
 
 class SessionProvider extends ChangeNotifier {
@@ -32,18 +35,20 @@ class SessionProvider extends ChangeNotifier {
   User? _user;
   UserProfile? _profil;
   SessionStatus _status = SessionStatus.chargement;
+  String? _erreurProfil;
 
   User? get user => _user;
   UserProfile? get profil => _profil;
   SessionStatus get status => _status;
+  String? get erreurProfil => _erreurProfil;
   FirestoreService get firestore => _firestoreService;
 
   void _onAuthChange(User? user) {
     _user = user;
-    _profilSub?.cancel();
-    _profilSub = null;
 
     if (user == null) {
+      _profilSub?.cancel();
+      _profilSub = null;
       _profil = null;
       _status = SessionStatus.deconnecte;
       notifyListeners();
@@ -52,18 +57,38 @@ class SessionProvider extends ChangeNotifier {
 
     _status = SessionStatus.chargement;
     notifyListeners();
+    _ecouterProfil(user.uid);
+  }
 
-    _profilSub = _firestoreService.profilStream(user.uid).listen((profil) {
-      _profil = profil;
-      if (profil == null) {
-        _status = SessionStatus.enAttenteProfil;
-      } else if (!profil.actif) {
-        _status = SessionStatus.compteDesactive;
-      } else {
-        _status = SessionStatus.pret;
-      }
-      notifyListeners();
-    });
+  void _ecouterProfil(String uid) {
+    _profilSub?.cancel();
+    _profilSub = _firestoreService.profilStream(uid).listen(
+      (profil) {
+        _profil = profil;
+        if (profil == null) {
+          _status = SessionStatus.enAttenteProfil;
+        } else if (!profil.actif) {
+          _status = SessionStatus.compteDesactive;
+        } else {
+          _status = SessionStatus.pret;
+        }
+        notifyListeners();
+      },
+      onError: (Object e) {
+        _erreurProfil = e.toString();
+        _status = SessionStatus.erreurProfil;
+        notifyListeners();
+      },
+    );
+  }
+
+  /// Relance l'écoute du profil après un échec (bouton "Réessayer").
+  void reessayerProfil() {
+    if (_user == null) return;
+    _status = SessionStatus.chargement;
+    _erreurProfil = null;
+    notifyListeners();
+    _ecouterProfil(_user!.uid);
   }
 
   Future<void> deconnexion() => _authService.deconnexion();

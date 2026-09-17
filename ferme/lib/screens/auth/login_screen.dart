@@ -50,6 +50,31 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
+  Future<void> _connecterGoogle() async {
+    setState(() {
+      _enCours = true;
+      _erreur = null;
+    });
+    try {
+      await context.read<AuthService>().connexionGoogle();
+      if (mounted) Navigator.of(context).pop();
+    } catch (e) {
+      final texte = e.toString();
+      setState(() {
+        if (texte.contains('operation-not-allowed')) {
+          _erreur = "La connexion Google n'est pas activée sur le projet Firebase "
+              '(Authentication → Sign-in method → Google).';
+        } else if (texte.contains('account-exists-with-different-credential')) {
+          _erreur = 'Un compte existe déjà avec cet e-mail via un autre mode de connexion.';
+        } else {
+          _erreur = 'Erreur : $texte';
+        }
+      });
+    } finally {
+      if (mounted) setState(() => _enCours = false);
+    }
+  }
+
   Future<void> _essayerAnonyme() async {
     setState(() {
       _enCours = true;
@@ -191,6 +216,12 @@ class _LoginScreenState extends State<LoginScreen> {
                       ],
                     ),
                     const SizedBox(height: 16),
+                    OutlinedButton.icon(
+                      onPressed: _enCours ? null : _connecterGoogle,
+                      icon: const Icon(Icons.g_mobiledata, size: 28),
+                      label: const Text('Continuer avec Google'),
+                    ),
+                    const SizedBox(height: 8),
                     OutlinedButton(
                       onPressed: _enCours ? null : _essayerAnonyme,
                       child: const Text('Essayer sans compte (mode démonstration)'),
