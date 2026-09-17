@@ -47,8 +47,8 @@ jobs:
       # ce qui fait échouer la fusion de manifeste Gradle.
       - name: Relever minSdkVersion à 23 (requis par firebase_auth)
         run: |
-          sed -i 's/minSdkVersion flutter.minSdkVersion/minSdkVersion 23/' ferme/android/app/build.gradle
-          grep -q 'minSdkVersion 23' ferme/android/app/build.gradle || { echo "::error::minSdkVersion patch failed"; cat ferme/android/app/build.gradle; exit 1; }
+          sed -i 's/minSdk = flutter.minSdkVersion/minSdk = 23/' ferme/android/app/build.gradle
+          grep -q 'minSdk = 23' ferme/android/app/build.gradle || { echo "::error::minSdkVersion patch failed"; cat ferme/android/app/build.gradle; exit 1; }
 
       # Firebase (Firestore + Authentication) : nécessite google-services.json
       # (projet Firebase du propriétaire de la ferme) et le plugin Gradle
